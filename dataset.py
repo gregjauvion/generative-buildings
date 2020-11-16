@@ -6,9 +6,40 @@ import matplotlib.pyplot as plt
 import cv2
 
 
+KAGGLE_PARIS_DATASET = 'data/kaggle_paris'
+
 ARC_DATASET_ROOT = 'data/arc_dataset_raw/arcDataset'
 
 JFR_DATASET = [f'data/jfr_dataset/pour-gregoire{i}' for i in range(1, 4)]
+JFR_DATASET_PARIS = 'data/jfr_dataset/raw/paris'
+JFR_DATASET_PARIS_FILTERED = 'data/jfr_dataset/raw/paris_filtered'
+JFR_DATASET_RELIGION = 'data/jfr_dataset/mosquees-cathedrales'
+JFR_DATASET_SELECTION = 'data/jfr_dataset/selection-finale'
+
+GOOGLE_IMAGES = 'data/google_images'
+
+FLICKR_PARIS = 'data/flickr/paris_pictures'
+
+
+def get_kaggle_paris_images():
+
+    for p in sorted(os.listdir(f'{KAGGLE_PARIS_DATASET}/raw/data_filtered')):
+        p_dir = f'{KAGGLE_PARIS_DATASET}/raw/data_filtered/{p}'
+        print(p_dir)
+        if os.path.isdir(p_dir):
+            for e, img in enumerate(sorted([i for i in os.listdir(p_dir) if i!='.DS_Store'])):
+                img_ = cv2.imread(f'{p_dir}/{img}')
+                if type(img_)==np.ndarray:
+                    yield p, e, img_
+
+
+def get_google_images():
+
+    for p in os.listdir(f'{GOOGLE_IMAGES}/raw'):
+        p_dir = f'{GOOGLE_IMAGES}/raw/{p}'
+        if os.path.isdir(p_dir):
+            for e, img in enumerate(sorted([i for i in os.listdir(p_dir) if i!='.DS_Store'])):
+                yield p, e, cv2.imread(f'{p_dir}/{img}'), img
 
 
 def get_arc_dataset():
@@ -33,6 +64,39 @@ def get_jfr_dataset():
             if p!='.DS_Store':
                 yield p, cv2.imread(f'{path}/{p}')
 
+
+def get_jfr_paris_dataset():
+
+    for e, p in enumerate(sorted(os.listdir(JFR_DATASET_PARIS_FILTERED))):
+        if p!='.DS_Store':
+            try:
+                yield p, cv2.imread(f'{JFR_DATASET_PARIS_FILTERED}/{p}')
+            except Exception as ex:
+                print(ex)
+
+
+def get_jfr_religion_dataset():
+
+    for path in sorted(os.listdir(JFR_DATASET_RELIGION)):
+        if path[0]!='.':
+            for e, p in enumerate(sorted(os.listdir(f'{JFR_DATASET_RELIGION}/{path}'))):
+                try:
+                    yield path, p, cv2.imread(f'{JFR_DATASET_RELIGION}/{path}/{p}')
+                except Exception as ex:
+                    print(ex)
+
+
+def get_jfr_selection():
+
+    for p in sorted(os.listdir(JFR_DATASET_SELECTION)):
+        yield p, cv2.imread(f'{JFR_DATASET_SELECTION}/{p}')
+
+
+def get_flickr_paris():
+
+    for img in sorted(os.listdir(f'{FLICKR_PARIS}/pictures')):
+        if img!='.DS_Store':
+            yield img, cv2.imread(f'{FLICKR_PARIS}/pictures/{img}')
 
 
 def resize_image(image, resolution):
@@ -88,22 +152,90 @@ def augment_image(image, plot=False):
 
 if __name__=='__main__':
 
+    from shutil import copyfile
+
     # Loop on JFR images
+    resolution = 1024
     for e, (name, img) in tqdm(enumerate(get_jfr_dataset()), total=7437):
         print(e, name)
         if not '.psd' in name:
-            image, image_flipped = augment_image(resize_image(img, 512))
-            cv2.imwrite(f'data/jfr_dataset_resized_augmented_512/{e}.jpg', image)
-            cv2.imwrite(f'data/jfr_dataset_resized_augmented_512/{e}_.jpg', image_flipped)
+            image, image_flipped = augment_image(resize_image(img, resolution))
+            cv2.imwrite(f'data/jfr_dataset_resized_augmented_{resolution}/{e}.jpg', image)
+            cv2.imwrite(f'data/jfr_dataset_resized_augmented_{resolution}/{e}_.jpg', image_flipped)
+
+    # JFR Paris images
+    resolutions = [256]
+    for e, obj in tqdm(enumerate(get_jfr_paris_dataset()), total=2729):
+        if obj is not None:
+            name, img = obj
+            print(e, name)
+            if not '.psd' in name:
+                for res in resolutions:
+                    image, image_flipped = augment_image(resize_image(img, res))
+                    cv2.imwrite(f'data/jfr_dataset/jfr_paris_filtered_augmented_{res}/{e}.jpg', image)
+                    cv2.imwrite(f'data/jfr_dataset/jfr_paris_filtered_augmented_{res}/{e}_.jpg', image_flipped)
+
+    # JFR religion images
+    resolutions = [256, 1024]
+    for e, (type_, name, img) in tqdm(enumerate(get_jfr_religion_dataset()), total=492):
+        if not '.psd' in name:
+            for res in resolutions:
+                if e>=306:
+                    image, image_flipped = augment_image(resize_image(img, res))
+                    cv2.imwrite(f'data/jfr_dataset_religion_resized_augmented_{res}/{type_}_{e}.jpg', image)
+                    cv2.imwrite(f'data/jfr_dataset_religion_resized_augmented_{res}/{type_}_{e}_.jpg', image_flipped)
+
+    # JFR selection
+    resolutions = [256, 1024]
+    for name, img in get_jfr_selection():
+        for res in resolutions:
+            image, image_flipped = augment_image(resize_image(img, res))
+            cv2.imwrite(f'data/jfr_dataset_selection_{res}/{name}', image)
+            cv2.imwrite(f'data/jfr_dataset_selection_{res}/flipped/flipped_{name}', image_flipped)
+
+    # Build datasets with all images at both resolutions
+    path_names = {
+        'jfr_dataset_resized_augmented': 'dataset',
+        'jfr_dataset_paris_resized_augmented': 'paris',
+        'jfr_dataset_religion_resized_augmented': 'religion'
+    }
+    for path in ['jfr_dataset_resized_augmented', 'jfr_dataset_paris_resized_augmented', 'jfr_dataset_religion_resized_augmented']:
+        for res in [256, 1024]:
+            for img in os.listdir(f'data/{path}_{res}'):
+                copyfile(f'data/{path}_{res}/{img}', f'data/jfr_dataset_all_{res}/{path_names[path]}_{img}')
+
+    # Build google images
+    res = 256
+    for name, e, img, _ in get_google_images():
+        image, image_flipped = augment_image(resize_image(img, res))
+        cv2.imwrite(f'data/google_images/augmented_256/{name}_{e}.jpg', image)
+        cv2.imwrite(f'data/google_images/augmented_256/{name}_{e}_.jpg', image_flipped)
+
+    # Kaggle Paris images
+    res = 256
+    for p, e, img in get_kaggle_paris_images():
+        image, image_flipped = augment_image(resize_image(img, res))
+        cv2.imwrite(f'{KAGGLE_PARIS_DATASET}/data_filtered_augmented_256/{p}_{e}.jpg', image)
+        cv2.imwrite(f'{KAGGLE_PARIS_DATASET}/data_filtered_augmented_256/{p}_{e}_.jpg', image_flipped)
+
+    # FLickr Paris images
+    for e, (name, img) in enumerate(get_flickr_paris()):
+        if e%100==0:
+            print(name)
+
+        image, image_flipped = augment_image(resize_image(img, res))
+        cv2.imwrite(f'{FLICKR_PARIS}/pictures_augmented_256/{name}.jpg', image)
+        cv2.imwrite(f'{FLICKR_PARIS}/pictures_augmented_256/{name}_.jpg', image_flipped)
+
+        if int(name[:6])>13000:
+            break
+
+    # Resize Flickr images
+    for d in ['good']:
+        for p in sorted(os.listdir(f'data/flickr/paris_pictures/classification_dataset/{d}')):
+            if p!='.DS_Store':
+                img = cv2.imread(f'data/flickr/paris_pictures/classification_dataset/{d}/{p}')
+                img = resize_image(img, 256)
+                cv2.imwrite(f'data/flickr/paris_pictures/classification_dataset/{d}_256/{p}', img)
 
 
-    # Loop on all images and resize them
-    #images_paths = get_images_paths()
-    #for e, img_path in tqdm(enumerate(images_paths), total=len(images_paths)):
-    #    image = cv2.imread(img_path, 1)
-        
-        #images = augment_image(resize_image(image))
-        #for ee, img in enumerate(images):
-        #    cv2.imwrite(f'data/resized_augmented/{e}_{ee}.jpg', img)
-
-    #    cv2.imwrite(f'data/resized/{e}.jpg', resize_image(image))
