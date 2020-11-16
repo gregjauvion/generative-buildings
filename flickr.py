@@ -44,12 +44,6 @@ def get_photo_ids_lat_lon():
 
 if __name__=='__main__':
 
-    #KEY = 'adaaa5f61c029082e06abaee5084c92f'
-    #ECRET = '0304e447b10f4e71'
-
-    KEY = 'ad996b51438408c75ba3df8be977f84f'
-    SECRET = '5d1dec91461d93b5'
-
     photo_ids_lat_lon = get_photo_ids_lat_lon()
     photo_id_urls = pickle.load(open('flickr/photo_id_urls_0_200000.pkl', 'rb'))
 
