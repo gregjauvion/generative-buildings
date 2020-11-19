@@ -109,7 +109,7 @@ import numpy as np
 import shutil
 
 
-ROOT = 'data/flickr/paris_pictures/pictures_tmp_200000'
+ROOT = 'data/pictures'
 
 model = load_model('classification_model_after_building.h5')
 
@@ -131,4 +131,4 @@ for b in range(0, len(paths), batch_size):
     # Copy files
     for p, pred in zip(batch_paths, predictions):
         c = 1 if pred[0]>=0.9 else 0
-        shutil.move(f'{ROOT}/buildings/{p}', f'data/flickr/paris_pictures/pictures_tmp_200000/{c}/{p}')
+        shutil.move(f'{ROOT}/buildings/{p}', f'{ROOT}/{c}/{p}')

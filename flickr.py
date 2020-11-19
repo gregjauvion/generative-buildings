@@ -71,12 +71,12 @@ if __name__=='__main__':
     import os
 
     photo_ids_lat_lon = get_photo_ids_lat_lon()
-    photo_id_urls = pickle.load(open('flickr/photo_id_urls_200000.pkl', 'rb'))
+    photo_id_urls = pickle.load(open('flickr/photo_id_urls_300k.pkl', 'rb'))
 
     # Flickr API calls to get the files urls
     api = flickrapi.FlickrAPI(KEY, SECRET)
     for e, (photo_id, lat, lon) in tqdm(enumerate(photo_ids_lat_lon)):
-        if e>=215000 and e<=300000:
+        if e>=300000 and e<=400000:
             photo_id_urls[photo_id] = {}
             try:
                 photo_id_urls[photo_id] = get_sizes_urls(api, photo_id)
@@ -84,17 +84,17 @@ if __name__=='__main__':
                 print('API error', e)
 
             # Save the file from time to time
-            if e%5000==0:
-                pickle.dump(photo_id_urls, open(f'flickr/photo_id_urls_{e}.pkl', 'wb'))
+            if e%10000==0:
+                pickle.dump(photo_id_urls, open(f'flickr/photo_id_urls_1_{e}.pkl', 'wb'))
 
             # Wait a bit to not be kicked from the API
             time.sleep(1)
 
     # Downlaod the images
     model = load_model('classification_model.h5')
-    root = 'data/flickr/paris_pictures/pictures_tmp'
+    root = 'data/flickr/paris_pictures/250_300'
     batch_nb, batch_paths, batch_images = 0, [], []
-    for e in range(165000, 190000):
+    for e in range(260000, 300000):
         if e%100==0:
             print(e)
 
@@ -109,7 +109,7 @@ if __name__=='__main__':
             img_o = cv2.imread(path_o)
             if img_o is not None:
                 # Resize
-                img_256 = resize_image(img_o, 256)
+                img_256 = resize_image(img_o, [256], uniform_background=False)[0]
                 batch_images.append(img_256)
                 cv2.imwrite(path_256, img_256)
                 batch_nb += 1
