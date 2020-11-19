@@ -99,7 +99,7 @@ def get_flickr_paris():
             yield img, cv2.imread(f'{FLICKR_PARIS}/pictures/{img}')
 
 
-def resize_image(image, resolution):
+def resize_image(image, resolutions, uniform_background=True):
     """
     Resize an image to the wanted resolution.
     Same factor is applied along x and y axis
@@ -120,15 +120,20 @@ def resize_image(image, resolution):
         image_t = image
 
     # Resize image
-    image_resized = cv2.resize(image_t, (resolution, resolution))
+    resized_images = []
+    for resolution in resolutions:
+        image_resized = cv2.resize(image_t, (resolution, resolution))
 
-    # Set uniform white background (255, 255, 255)
-    # It Background may be black or white, we set white everywhere to be consistent
-    border = (image_resized==255).all(axis=2) | (image_resized==0).all(axis=2)
-    border_rgb = np.repeat(np.expand_dims(border, -1), 3, axis=2)
-    image_resized[border_rgb] = 255
+        # Set uniform white background (255, 255, 255)
+        # It Background may be black or white, we set white everywhere to be consistent
+        if uniform_background:
+            border = (image_resized==255).all(axis=2) | (image_resized==0).all(axis=2)
+            border_rgb = np.repeat(np.expand_dims(border, -1), 3, axis=2)
+            image_resized[border_rgb] = 255
 
-    return image_resized
+        resized_images.append(image_resized)
+
+    return resized_images
 
 
 def augment_image(image, plot=False):
@@ -223,12 +228,8 @@ if __name__=='__main__':
         if e%100==0:
             print(name)
 
-        image, image_flipped = augment_image(resize_image(img, res))
-        cv2.imwrite(f'{FLICKR_PARIS}/pictures_augmented_256/{name}.jpg', image)
-        cv2.imwrite(f'{FLICKR_PARIS}/pictures_augmented_256/{name}_.jpg', image_flipped)
-
-        if int(name[:6])>13000:
-            break
+        image = resize_image(img, res)
+        cv2.imwrite(f'{FLICKR_PARIS}/pictures_256/{name}.jpg', image)
 
     # Resize Flickr images
     for d in ['good']:
