@@ -1,5 +1,7 @@
 
 import numpy as np
+import os
+import shutil
 
 from keras.preprocessing.image import ImageDataGenerator
 from keras.applications.vgg16 import VGG16
@@ -8,34 +10,34 @@ from keras.layers import Dense, Flatten
 from keras.callbacks import ModelCheckpoint
 
 
-TRAIN_DATA_DIR = 'data/classification_2/train'
-TEST_DATA_DIR = 'data/classification_2/test'
+TRAIN_DATA_DIR = 'data/train'
+TEST_DATA_DIR = 'data/test'
 
 BATCH_SIZE = 16
 
 
 # Split into train/test
-p_0 = 'data/flickr/paris_pictures/classification_dataset/bad_256'
-p_1 = 'data/flickr/paris_pictures/classification_dataset/good_256'
-img_0 = os.listdir(p_0)
-img_1 = os.listdir(p_1)
+p_0 = 'data/flickr/religion_pictures/classification_dataset/0'
+p_1 = 'data/flickr/religion_pictures/classification_dataset/1'
+img_0 = [i for i in os.listdir(p_0) if i!='.DS_Store']
+img_1 = [i for i in os.listdir(p_1) if i!='.DS_Store']
 
-train_0 = np.random.choice(img_0, size=len(img_0) - 1000, replace=False)
-train_1 = np.random.choice(img_1, size=len(img_1) - 1000, replace=False)
+train_0 = np.random.choice(img_0, size=int(0.75*len(img_0)), replace=False)
+train_1 = np.random.choice(img_1, size=int(0.75*len(img_1)), replace=False)
 test_0 = [i for i in img_0 if not i in set(train_0)]
 test_1 = [i for i in img_1 if not i in set(train_1)]
 
 for i in train_0:
-    shutil.copy(f'{p_0}/{i}', f'data/flickr/paris_pictures/classification_dataset/train/0/{i}')
+    shutil.copy(f'{p_0}/{i}', f'data/flickr/religion_pictures/classification_dataset/train/0/{i}')
 
 for i in test_0:
-    shutil.copy(f'{p_0}/{i}', f'data/flickr/paris_pictures/classification_dataset/test/0/{i}')
+    shutil.copy(f'{p_0}/{i}', f'data/flickr/religion_pictures/classification_dataset/test/0/{i}')
 
 for i in train_1:
-    shutil.copy(f'{p_1}/{i}', f'data/flickr/paris_pictures/classification_dataset/train/1/{i}')
+    shutil.copy(f'{p_1}/{i}', f'data/flickr/religion_pictures/classification_dataset/train/1/{i}')
 
 for i in test_1:
-    shutil.copy(f'{p_1}/{i}', f'data/flickr/paris_pictures/classification_dataset/test/1/{i}')
+    shutil.copy(f'{p_1}/{i}', f'data/flickr/religion_pictures/classification_dataset/test/1/{i}')
 
 
 # Data generators
@@ -90,7 +92,7 @@ model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy']
 model.fit_generator(
     train_generator,
     steps_per_epoch=len(train_generator),
-    callbacks=ModelCheckpoint('classification_model_2.h5', save_best_only=True),
+    callbacks=ModelCheckpoint('classification_model_3_bis.h5', save_best_only=True),
     epochs=50,
     validation_data=test_generator)
 
@@ -109,12 +111,12 @@ import numpy as np
 import shutil
 
 
-ROOT = 'data/pictures'
+ROOT = 'data'
 
-model = load_model('classification_model_after_building.h5')
+model = load_model('classification_model_3_bis.h5')
 
-paths = [p for p in sorted(os.listdir(f'{ROOT}/buildings')) if p!='.DS_Store']
-batch_size = 32
+paths = [p for p in sorted(os.listdir(f'{ROOT}/pictures/')) if p!='.DS_Store']
+batch_size = 16
 
 for b in range(0, len(paths), batch_size):
     print(b)
@@ -123,12 +125,34 @@ for b in range(0, len(paths), batch_size):
     # Resize images
     batch_images = []
     for p in batch_paths:
-        batch_images.append(np.expand_dims(resize_image(cv2.imread(f'{ROOT}/buildings/{p}'), [256])[0] / 255., 0))
+        batch_images.append(np.expand_dims(resize_image(cv2.imread(f'{ROOT}/pictures/{p}'), [256])[0] / 255., 0))
 
     # Predict labels
     predictions = model.predict(np.concatenate(batch_images))
+    all_p.extend(list(predictions.reshape(-1)))
 
     # Copy files
     for p, pred in zip(batch_paths, predictions):
-        c = 1 if pred[0]>=0.9 else 0
-        shutil.move(f'{ROOT}/buildings/{p}', f'{ROOT}/{c}/{p}')
+        c = 1 if pred[0]>=0.5 else 0
+        shutil.copy(f'{ROOT}/pictures/{p}', f'{ROOT}/classified/{c}/{p}')
+
+
+
+
+
+###
+# Copy all images
+###
+
+import pickle
+import matplotlib.pyplot as plt
+import os
+import shutil
+
+ROOT = 'data/flickr/paris_pictures'
+
+for root in [f'{ROOT}/{r}/{r}_buildings_512' for r in ['0_100k', '100k_200k', '200k_300k', '300k_500k']]:
+    print(root)
+    for f in os.listdir(root):
+        shutil.copy(f'{root}/{f}', f'{ROOT}/0_500k_buildings_512/{f}')
+

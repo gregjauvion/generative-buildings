@@ -158,6 +158,7 @@ def augment_image(image, plot=False):
 if __name__=='__main__':
 
     from shutil import copyfile
+    import matplotlib.pyplot as plt
 
     # Loop on JFR images
     resolution = 1024
@@ -239,4 +240,55 @@ if __name__=='__main__':
                 img = resize_image(img, 256)
                 cv2.imwrite(f'data/flickr/paris_pictures/classification_dataset/{d}_256/{p}', img)
 
+    # Resize
+    root = 'data/flickr/religion_pictures'
+    for dir_ in os.listdir(f'{root}/pictures'):
+        if dir_!='.DS_Store':
+            print(dir_)
+            os.makedirs(f'{root}/pictures_256/{dir_}', exist_ok=True)
+            for img in os.listdir(f'{root}/pictures/{dir_}'):
+                if img !='.DS_Store':
+                    img_ = cv2.imread(f'{root}/pictures/{dir_}/{img}')
+                    cv2.imwrite(f'{root}/pictures_256/{dir_}/{img}', resize_image(img_, [256], uniform_background=False)[0])
+
+    # Filter google religion images
+    root = 'data/google_images/religion'
+    for dir_ in os.listdir(f'{root}/raw')[2:]:
+        r = f'{root}/raw/{dir_}'
+        for i in os.listdir(r):
+            if i!='.DS_Store':
+                img = cv2.imread(f'{r}/{i}')
+                img_256, img_512 = resize_image(img, [256, 512], uniform_background=False)
+                cv2.imwrite(f'{root}/pictures_256/{dir_}_{i}', img_256)
+                cv2.imwrite(f'{root}/pictures_512/{dir_}_{i}', img_512)
+
+    predictions = pickle.load(open(f'{ROOT}/predictions.pkl', 'rb'))
+    plt.plot(sorted(predictions.values())) ; plt.show()
+
+    imgs = set([i for i, j in predictions.items() if j>=0.8])
+    for i in os.listdir(f'{root}/pictures_512'):
+        if not i in imgs:
+            shutil.move(f'{root}/pictures_512/{i}', f'{root}/trash/{i}')
+
+    # Resize JFR religion
+    JFR_DATASET_RELIGION = 'data/jfr_dataset/mosquees-cathedrales'
+    for path in sorted(os.listdir(JFR_DATASET_RELIGION))[4:]:
+        if path[0]!='.' and path!='interieurs':
+            print(path)
+            for e, p in enumerate(sorted(os.listdir(f'{JFR_DATASET_RELIGION}/{path}'))):
+                if p!='.DS_Store':
+                    try:
+                        img = cv2.imread(f'{JFR_DATASET_RELIGION}/{path}/{p}')
+                        img_256, img_512 = resize_image(img, [256, 512], uniform_background=False)
+                        cv2.imwrite(f'data/jfr_dataset/jfr_religion_256/{path}_{p}', img_256)
+                        cv2.imwrite(f'data/jfr_dataset/jfr_religion_512/{path}_{p}', img_512)
+                    except Exception as e:
+                        print(e)
+
+    for p in os.listdir('data/jfr_dataset/selection-finale'):
+        if p!='.DS_Store' and p!='.BridgeSort':
+            img = cv2.imread(f'data/jfr_dataset/selection-finale/{p}')
+            img_256, img_512 = resize_image(img, [256, 512], uniform_background=False)
+            cv2.imwrite(f'data/jfr_dataset/jfr_religion_256/selection_{p}', img_256)
+            cv2.imwrite(f'data/jfr_dataset/jfr_religion_512/selection_{p}', img_512)
 
